@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MindFlow AI: Medicina del Futuro</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Custom styles for the Inter font and default body background */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #e2e8f0; /* Un gris azulado claro, bg-blue-100 */
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        /* Custom Tailwind configuration for Unifranz inspired colors */
+        .unifranz-orange {
+            background-color: #FF6600; /* A vibrant orange */
+        }
+        .unifranz-dark-blue {
+            background-color: #0A2E5B; /* A deep, corporate blue */
+        }
+        /* Using Tailwind's JIT mode for gradients, direct CSS class not strictly needed here if configured in tailwind.config */
+
+        /* Chatbot specific styles */
+        #chat-window {
+            right: 1.5rem; /* Ajustado para que no esté tan pegado */
+            bottom: 6.5rem; /* Ajustado para estar sobre el botón del chat */
+            width: 22rem; /* Ligeramente más ancho */
+            max-height: 70vh; /* Max height for scrollable content */
+            display: flex;
+            flex-direction: column;
+            border-radius: 1.5rem; /* Más redondeado */
+            overflow: hidden;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3); /* Sombra más pronunciada */
+            transition: all 0.4s ease-in-out;
+            transform: scale(0.9); /* Más pequeño al inicio */
+            opacity: 0;
+            pointer-events: none;
+            transform-origin: bottom right;
+            z-index: 1000; /* Ensure it's above other content */
+        }
+
+        #chat-window.open {
+            transform: scale(1);
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        #chat-messages {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 1.25rem; /* Más padding */
+            background-color: #fefefe; /* Blanco casi puro */
+            border-bottom: 1px solid #edf2f7; /* Borde sutil */
+        }
+
+        .message-bubble {
+            max-width: 85%; /* Ligeramente más ancho */
+            padding: 0.85rem 1.25rem; /* Más padding */
+            border-radius: 1.25rem; /* Más redondeado */
+            margin-bottom: 0.75rem; /* Más espacio */
+            line-height: 1.5;
+            font-size: 0.95rem; /* Ligeramente más grande */
+        }
+
+        .message-bubble.user {
+            background-color: #c3e6cb; /* Verde pastel */
+            align-self: flex-end;
+            margin-left: auto;
+            text-align: right;
+            border-bottom-right-radius: 0.5rem; /* Menos asimétrico */
+        }
+
+        .message-bubble.ai {
+            background-color: #e6f2ff; /* Azul pastel */
+            align-self: flex-start;
+            margin-right: auto;
+            text-align: left;
+            border-bottom-left-radius: 0.5rem; /* Menos asimétrico */
+        }
+
+        #chat-input-area {
+            padding: 1rem;
+            background-color: #fff;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem; /* Más espacio */
+        }
+
+        #chat-input {
+            flex-grow: 1;
+            padding: 0.85rem; /* Más padding */
+            border: 1px solid #cbd5e0; /* Gris más claro */
+            border-radius: 1rem; /* Más redondeado */
+            outline: none;
+            font-size: 0.95rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        #chat-input:focus {
+            border-color: #6366f1; /* Morado suave al enfocar */
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+        }
+
+        #send-chat-button {
+            background-color: #6366f1; /* Morado suave */
+            color: white;
+            padding: 0.85rem; /* Más padding */
+            border-radius: 1rem; /* Más redondeado */
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.2s;
+            box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);
+        }
+
+        #send-chat-button:hover {
+            background-color: #4f46e5; /* Morado más oscuro */
+            transform: translateY(-2px);
+        }
+
+        #chat-toggle-button {
+            right: 1.5rem;
+            bottom: 1.5rem;
+            background-color: #FF6600; /* Naranja vibrante */
+            color: white;
+            padding: 1.25rem; /* Más grande */
+            border-radius: 50%;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+            cursor: pointer;
+            transition: transform 0.3s, background-color 0.3s, box-shadow 0.3s;
+            z-index: 1001; /* Above chat window */
+        }
+
+        #chat-toggle-button:hover {
+            transform: scale(1.1) translateY(-3px); /* Efecto pop más pronunciado */
+            background-color: #E65C00; /* Naranja más oscuro */
+            box-shadow: 0 12px 25px rgba(0,0,0,0.4);
+        }
+
+        #chat-toggle-button i {
+            width: 1.75rem; /* Icono más grande */
+            height: 1.75rem;
+        }
+
+        #loading-indicator {
+            display: none;
+            text-align: center;
+            padding: 0.75rem;
+            font-size: 0.85rem;
+            color: #6b7280;
+            font-weight: 500;
+        }
+
+        #loading-indicator.visible {
+            display: block;
+        }
+
+        .expanded-content {
+            margin-top: 1.25rem;
+            padding: 1.25rem;
+            background-color: #e0f2f7; /* Azul claro suave */
+            border-left: 5px solid #0A2E5B; /* Borde más grueso y oscuro */
+            border-radius: 0.75rem; /* Más redondeado */
+            font-size: 0.95rem;
+            color: #334155; /* Slate 700 */
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1); /* Sombra sutil */
+        }
+
+        .expanded-content p {
+            margin-bottom: 0.6rem;
+        }
+
+        /* Nav Item Active State */
+        .nav-item.active-nav-item {
+            background-color: rgba(255, 255, 255, 0.25); /* Un blanco más translúcido */
+            border-radius: 0.75rem;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .nav-item {
+            transition: all 0.3s ease-in-out;
+            padding: 0.6rem 1.2rem; /* Ajustado para mejor look con iconos a la derecha */
+        }
+
+        .nav-item:hover {
+            background-color: rgba(255, 255, 255, 0.15);
+        }
+
+    </style>
+    <script>
+        // Extend Tailwind CSS with custom colors
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        unifranz: {
+                            orange: '#FF6600',
+                            darkblue: '#0A2E5B',
+                            purple: '#4A148C', // A deep purple to use in gradients
+                        },
+                        // Nuevos colores para el diseño
+                        'custom-blue-gradient-start': '#1e3a8a', /* Azul oscuro para degradado */
+                        'custom-purple-gradient-end': '#6d28d9', /* Morado oscuro para degradado */
+                        'accent-indigo': '#6366f1', /* Índigo suave */
+                        'light-blue-bg': '#e0f2fe', /* Azul claro de fondo */
+                        'gradient-start': '#1a56db', /* Nuevo azul más brillante */
+                        'gradient-end': '#6b21a8', /* Nuevo morado más oscuro */
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body>
+    <nav class="bg-gradient-to-r from-gradient-start to-gradient-end p-6 shadow-2xl rounded-b-3xl">
+        <div class="container mx-auto flex flex-wrap items-center justify-between">
+            <div class="flex items-center">
+                <!-- AI Logo (Using an SVG for a cleaner, scalable icon) -->
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-11 h-11 text-white mr-4 animate-pulse">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                    <path d="M2 17l10 5 10-5"></path>
+                    <path d="M2 12l10 5 10-5"></path>
+                    <circle cx="12" cy="12" r="3" fill="white" stroke="none"/>
+                </svg>
+                <span class="text-white text-3xl md:text-4xl font-extrabold font-inter rounded-md py-2 px-3 tracking-wide drop-shadow-lg">
+                    MindFlow AI: Medicina del Futuro
+                </span>
+            </div>
+            <div class="block lg:hidden">
+                <button class="text-white focus:outline-none p-2 rounded-md hover:bg-white hover:bg-opacity-20 transition-colors duration-200" id="mobile-menu-button">
+                    <!-- Hamburger icon for mobile navigation -->
+                    <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="w-full flex-grow lg:flex lg:items-center lg:w-auto mt-6 lg:mt-0" id="nav-content">
+                <div class="text-lg lg:flex-grow flex flex-col lg:flex-row lg:justify-end lg:space-x-6">
+                    <button onclick="showPage('home')" class="nav-item block mt-4 lg:inline-block lg:mt-0 text-white hover:text-orange-100 py-3 px-5 rounded-xl transition-all duration-300 active-nav-item transform hover:scale-105">
+                        <span class="flex items-center gap-x-2">
+                            Inicio
+                            <i data-lucide="home" class="w-6 h-6"></i>
+                        </span>
+                    </button>
+                    <button onclick="showPage('objectives')" class="nav-item block mt-4 lg:inline-block lg:mt-0 text-white hover:text-orange-100 py-3 px-5 rounded-xl transition-all duration-300 transform hover:scale-105">
+                        <span class="flex items-center gap-x-2">
+                            Objetivos
+                            <i data-lucide="lightbulb" class="w-6 h-6"></i>
+                        </span>
+                    </button>
+                    <button onclick="showPage('modules')" class="nav-item block mt-4 lg:inline-block lg:mt-0 text-white hover:text-orange-100 py-3 px-5 rounded-xl transition-all duration-300 transform hover:scale-105">
+                        <span class="flex items-center gap-x-2">
+                            Módulos
+                            <i data-lucide="book" class="w-6 h-6"></i>
+                        </span>
+                    </button>
+                    <button onclick="showPage('units')" class="nav-item block mt-4 lg:inline-block lg:mt-0 text-white hover:text-orange-100 py-3 px-5 rounded-xl transition-all duration-300 transform hover:scale-105">
+                        <span class="flex items-center gap-x-2">
+                            Unidades Temáticas
+                            <i data-lucide="graduation-cap" class="w-6 h-6"></i>
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="py-10">
+        <!-- Home Page Content -->
+        <div id="home-page" class="page-content container mx-auto p-8 font-inter text-gray-800">
+            <div class="bg-white p-10 rounded-3xl shadow-2xl border border-blue-100">
+                <h1 class="text-5xl font-extrabold text-center text-unifranz-dark-blue mb-8 leading-tight">
+                    Inteligencia Artificial para Estudiantes de Medicina
+                </h1>
+                <p class="text-lg text-center mb-5 max-w-4xl mx-auto text-gray-700">
+                    Bienvenido a la plataforma educativa diseñada para introducir a los futuros profesionales de la salud en el fascinante mundo de la Inteligencia Artificial. Prepárate para transformar tu práctica médica con herramientas y conocimientos innovadores.
+                </p>
+                <p class="text-xl text-center mb-10 max-w-4xl mx-auto font-semibold text-unifranz-orange border-b-2 border-unifranz-orange pb-4">
+                    Este curso es altamente recomendado para estudiantes de Medicina de cualquier semestre, ya que la integración de la IA es fundamental para su formación profesional y futura práctica clínica.
+                </p>
+                <div class="grid md:grid-cols-2 gap-10 mt-12">
+                    <div class="p-8 bg-blue-50 rounded-2xl shadow-lg border-t-4 border-unifranz-dark-blue transform hover:scale-105 transition-transform duration-300 cursor-pointer">
+                        <h2 class="text-3xl font-bold text-unifranz-dark-blue mb-5 flex items-center">
+                            <i data-lucide="lightbulb" class="mr-4 text-unifranz-orange w-9 h-9"></i>
+                            Nuestro Enfoque
+                        </h2>
+                        <p class="text-md leading-relaxed text-gray-800">
+                            Explora cómo la IA puede optimizar diagnósticos, personalizar tratamientos y mejorar la eficiencia en la atención al paciente. Te proporcionaremos una base sólida para que apliques estas tecnologías de manera ética y efectiva.
+                        </p>
+                    </div>
+                    <div class="p-8 bg-purple-50 rounded-2xl shadow-lg border-t-4 border-unifranz-purple transform hover:scale-105 transition-transform duration-300 cursor-pointer">
+                        <h2 class="text-3xl font-bold text-unifranz-purple mb-5 flex items-center">
+                            <i data-lucide="graduation-cap" class="mr-4 text-unifranz-dark-blue w-9 h-9"></i>
+                            Aprendizaje Interactivo
+                        </h2>
+                        <p class="text-md leading-relaxed text-gray-800">
+                            Nuestros cursos están diseñados con contenido interactivo, estudios de caso reales y simulaciones prácticas para asegurar una comprensión profunda y aplicable de los conceptos de IA en el ámbito médico.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Objectives Page Content -->
+        <div id="objectives-page" class="page-content hidden container mx-auto p-8 font-inter text-gray-800">
+            <div class="bg-white p-10 rounded-3xl shadow-2xl border border-blue-100">
+                <h1 class="text-4xl font-bold text-unifranz-dark-blue mb-8 text-center">
+                    Objetivos del Curso
+                </h1>
+                <p class="text-lg mb-10 text-center max-w-4xl mx-auto text-gray-700">
+                    Al finalizar este curso, los estudiantes serán capaces de:
+                </p>
+                <ul class="list-none space-y-6 px-4 md:px-10">
+                    <li class="flex items-start bg-blue-50 p-6 rounded-xl shadow-md border-l-4 border-unifranz-orange transform hover:translate-x-1 transition-transform duration-200">
+                        <i data-lucide="check-circle" class="flex-shrink-0 mr-4 mt-1 text-unifranz-orange w-7 h-7"></i>
+                        <p class="text-lg text-gray-800">
+                            Comprender los fundamentos teóricos y prácticos de la Inteligencia Artificial y su aplicación en el campo de la medicina.
+                        </p>
+                    </li>
+                    <li class="flex items-start bg-blue-50 p-6 rounded-xl shadow-md border-l-4 border-unifranz-orange transform hover:translate-x-1 transition-transform duration-200">
+                        <i data-lucide="check-circle" class="flex-shrink-0 mr-4 mt-1 text-unifranz-orange w-7 h-7"></i>
+                        <p class="text-lg text-gray-800">
+                            Identificar las principales herramientas y algoritmos de IA utilizados en diagnóstico, tratamiento y gestión de la salud.
+                        </p>
+                    </li>
+                    <li class="flex items-start bg-blue-50 p-6 rounded-xl shadow-md border-l-4 border-unifranz-orange transform hover:translate-x-1 transition-transform duration-200">
+                        <i data-lucide="check-circle" class="flex-shrink-0 mr-4 mt-1 text-unifranz-orange w-7 h-7"></i>
+                        <p class="text-lg text-gray-800">
+                            Analizar casos de estudio reales para evaluar el impacto y las limitaciones de la IA en diferentes especialidades médicas.
+                        </p>
+                    </li>
+                    <li class="flex items-start bg-blue-50 p-6 rounded-xl shadow-md border-l-4 border-unifranz-orange transform hover:translate-x-1 transition-transform duration-200">
+                        <i data-lucide="check-circle" class="flex-shrink-0 mr-4 mt-1 text-unifranz-orange w-7 h-7"></i>
+                        <p class="text-lg text-gray-800">
+                            Desarrollar habilidades críticas para la interpretación y el uso ético de los resultados generados por sistemas de IA en la práctica clínica.
+                        </p>
+                    </li>
+                    <li class="flex items-start bg-blue-50 p-6 rounded-xl shadow-md border-l-4 border-unifranz-orange transform hover:translate-x-1 transition-transform duration-200">
+                        <i data-lucide="check-circle" class="flex-shrink-0 mr-4 mt-1 text-unifranz-orange w-7 h-7"></i>
+                        <p class="text-lg text-gray-800">
+                            Fomentar la investigación y la innovación en el ámbito de la IA aplicada a la medicina.
+                        </p>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Modules Page Content -->
+        <div id="modules-page" class="page-content hidden container mx-auto p-8 font-inter text-gray-800">
+            <div class="bg-white p-10 rounded-3xl shadow-2xl border border-blue-100">
+                <h1 class="text-4xl font-bold text-unifranz-dark-blue mb-8 text-center">
+                    Módulos del Curso
+                </h1>
+                <p class="text-lg mb-10 text-center max-w-4xl mx-auto text-gray-700">
+                    Nuestro programa está dividido en módulos estratégicamente diseñados para una comprensión progresiva y profunda de la IA en medicina.
+                </p>
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <!-- Module 1 -->
+                    <div class="bg-white p-7 rounded-2xl shadow-lg border-b-4 border-accent-indigo transform hover:translate-y-[-5px] transition-transform duration-300">
+                        <div class="flex items-center mb-5">
+                            <i data-lucide="atom" class="text-custom-blue-gradient-start w-10 h-10 mr-3"></i>
+                            <h3 class="text-2xl font-bold text-gray-800">Módulo 1: Fundamentos de IA</h3>
+                        </div>
+                        <p class="text-md text-gray-700 leading-relaxed mb-5">Introducción a los conceptos básicos de Inteligencia Artificial, aprendizaje automático y aprendizaje profundo.</p>
+                        <div class="flex flex-wrap gap-2">
+                            <button onclick="expandModuleContent('Módulo 1: Fundamentos de IA')" class="flex-1 bg-accent-indigo hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-base font-semibold transition duration-200 shadow-md">Expandir Contenido ✨</button>
+                            <button onclick="generateQuizQuestions('Módulo 1: Fundamentos de IA')" class="flex-1 bg-unifranz-orange hover:bg-orange-700 text-white px-5 py-2.5 rounded-lg text-base font-semibold transition duration-200 shadow-md">Generar Preguntas ✨</button>
+                            <button onclick="explainAIConcept('Módulo 1: Fundamentos de IA')" class="flex-1 bg-purple-700 hover:bg-purple-900 text-white px-5 py-2.5 rounded-lg text-base font-semibold transition duration-200 shadow-md">Explicar Concepto IA ✨</button>
+                        </div>
+                        <div id="expanded-Módulo 1: Fundamentos de IA" class="expanded-content hidden"></div>
+                        <div id="loading-Módulo 1: Fundamentos de IA" class="loading-module-indicator hidden text-center text-sm text-gray-500 mt-3">Cargando...</div>
+                    </div>
+                    <!-- Module 2 -->
+                    <div class="bg-white p-7 rounded-2xl shadow-lg border-b-4 border-accent-indigo transform hover:translate-y-[-5px] transition-transform duration-300">
+                        <div class="flex items-center mb-5">
+                            <i data-lucide="microscope" class="text-custom-blue-gradient-start w-10 h-10 mr-3"></i>
+                            <h3 class="text-2xl font-bold text-gray-800">Módulo 2: IA en Diagnóstico por Imagen</h3>
+                        </div>
+                        <p class="text-md text-gray-700 leading-relaxed mb-5">Aplicaciones de la IA en radiología, patología y otras áreas de diagnóstico visual.</p>
+                        <div class="flex flex-wrap gap-2">
+                            <button onclick="expandModuleContent('Módulo 2: IA en Diagnóstico por Imagen')" class="flex-1 bg-accent-indigo hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-base font-semibold transition duration-200 shadow-md">Expandir Contenido ✨</button>
+                            <button onclick="generateQuizQuestions('Módulo 2: IA en Diagnóstico por Imagen')" class="flex-1 bg-unifranz-orange hover:bg-orange-700 text-white px-5 py-2.5 rounded-lg text-base font-semibold transition duration-200 shadow-md">Generar Preguntas ✨</button>
+                            <button onclick="explainAIConcept('Módulo 2: IA en Diagnóstico por Imagen')" class="flex-1 bg-purple-700 hover:bg-purple-900 text-white px-5 py-2.5 rounded-lg text-base font-semibold transition duration-200 shadow-md">Explicar Concepto IA ✨</button>
+                        </div>
+                        <div id="expanded-Módulo 2: IA en Diagnóstico por Imagen" class="expanded-content hidden"></div>
+                        <div id="loading-Módulo 2: IA en Diagnóstico por Imagen" class="loading-module-indicator hidden text-center text-sm text-gray-500 mt-3">Cargando...</div>
+                    </div>
+                    <!-- Module 3 -->
+                    <div class="bg-white p-7 rounded-2xl shadow-lg border-b-4 border-accent-indigo transform hover:translate-y-[-5px] transition-transform duration-300">
+                        <div class="flex items-center mb-5">
+                            <i data-lucide="message-square" class="text-custom-blue-gradient-start w-10 h-10 mr-3"></i>
+                            <h3 class="text-2xl font-bold text-gray-800">Módulo 3: Procesamiento de Lenguaje Natural (PLN) Clínico</h3>
+                        </div>
+                        <p class="text-md text-gray-700 leading-relaxed mb-5">Uso de PLN para analizar historias clínicas, notas médicas y literatura científica.</p>
+                        <div class="flex flex-wrap gap-2">
+                            <button onclick="expandModuleContent('Módulo 3: Procesamiento de Lenguaje Natural (PLN) Clínico')" class="flex-1 bg-accent-indigo hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-base font-semibold transition duration-200 shadow-md">Expandir Contenido ✨</button>
+                            <button onclick="generateQuizQuestions('Módulo 3: Procesamiento de Lenguaje Natural (PLN) Clínico')" class="flex-1 bg-unifranz-orange hover:bg-orange-700 text-white px-5 py-2.5 rounded-lg text-base font-semibold transition duration-200 shadow-md">Generar Preguntas ✨</button>
+                            <button onclick="explainAIConcept('Módulo 3: Procesamiento de Lenguaje Natural (PLN) Clínico')" class="flex-1 bg-purple-700 hover:bg-purple-900 text-white px-5 py-2.5 rounded-lg text-base font-semibold transition duration-200 shadow-md">Explicar Concepto IA ✨</button>
+                        </div>
+                        <div id="expanded-Módulo 3: Procesamiento de Lenguaje Natural (PLN) Clínico" class="expanded-content hidden"></div>
+                        <div id="loading-Módulo 3: Procesamiento de Lenguaje Natural (PLN) Clínico" class="loading-module-indicator hidden text-center text-sm text-gray-500 mt-3">Cargando...</div>
+                    </div>
+                    <!-- Module 4 -->
+                    <div class="bg-white p-7 rounded-2xl shadow-lg border-b-4 border-accent-indigo transform hover:translate-y-[-5px] transition-transform duration-300">
+                        <div class="flex items-center mb-5">
+                            <i data-lucide="dna" class="text-custom-blue-gradient-start w-10 h-10 mr-3"></i>
+                            <h3 class="text-2xl font-bold text-gray-800">Módulo 4: IA en Descubrimiento de Fármacos y Genómica</h3>
+                        </div>
+                        <p class="text-md text-gray-700 leading-relaxed mb-5">Exploración de cómo la IA acelera la investigación y el desarrollo de nuevos tratamientos.</p>
+                        <div class="flex flex-wrap gap-2">
+                            <button onclick="expandModuleContent('Módulo 4: IA en Descubrimiento de Fármacos y Genómica')" class="flex-1 bg-accent-indigo hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-base font-semibold transition duration-200 shadow-md">Expandir Contenido ✨</button>
+                            <button onclick="generateQuizQuestions('Módulo 4: IA en Descubrimiento de Fármacos y Genómica')" class="flex-1 bg-unifranz-orange hover:bg-orange-700 text-white px-5 py-2.5 rounded-lg text-base font-semibold transition duration-200 shadow-md">Generar Preguntas ✨</button>
+                            <button onclick="explainAIConcept('Módulo 4: IA en Descubrimiento de Fármacos y Genómica')" class="flex-1 bg-purple-700 hover:bg-purple-900 text-white px-5 py-2.5 rounded-lg text-base font-semibold transition duration-200 shadow-md">Explicar Concepto IA ✨</button>
+                        </div>
+                        <div id="expanded-Módulo 4: IA en Descubrimiento de Fármacos y Genómica" class="expanded-content hidden"></div>
+                        <div id="loading-Módulo 4: IA en Descubrimiento de Fármacos y Genómica" class="loading-module-indicator hidden text-center text-sm text-gray-500 mt-3">Cargando...</div>
+                    </div>
+                    <!-- Module 5 -->
+                    <div class="bg-white p-7 rounded-2xl shadow-lg border-b-4 border-accent-indigo transform hover:translate-y-[-5px] transition-transform duration-300">
+                        <div class="flex items-center mb-5">
+                            <i data-lucide="shield-check" class="text-custom-blue-gradient-start w-10 h-10 mr-3"></i>
+                            <h3 class="text-2xl font-bold text-gray-800">Módulo 5: Ética, Privacidad y Regulación de IA Médica</h3>
+                        </div>
+                        <p class="text-md text-gray-700 leading-relaxed mb-5">Consideraciones éticas, protección de datos y el marco regulatorio en la aplicación de la IA en salud.</p>
+                        <div class="flex flex-wrap gap-2">
+                            <button onclick="expandModuleContent('Módulo 5: Ética, Privacidad y Regulación de IA Médica')" class="flex-1 bg-accent-indigo hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-base font-semibold transition duration-200 shadow-md">Expandir Contenido ✨</button>
+                            <button onclick="generateQuizQuestions('Módulo 5: Ética, Privacidad y Regulación de IA Médica')" class="flex-1 bg-unifranz-orange hover:bg-orange-700 text-white px-5 py-2.5 rounded-lg text-base font-semibold transition duration-200 shadow-md">Generar Preguntas ✨</button>
+                            <button onclick="explainAIConcept('Módulo 5: Ética, Privacidad y Regulación de IA Médica')" class="flex-1 bg-purple-700 hover:bg-purple-900 text-white px-5 py-2.5 rounded-lg text-base font-semibold transition duration-200 shadow-md">Explicar Concepto IA ✨</button>
+                        </div>
+                        <div id="expanded-Módulo 5: Ética, Privacidad y Regulación de IA Médica" class="expanded-content hidden"></div>
+                        <div id="loading-Módulo 5: Ética, Privacidad y Regulación de IA Médica" class="loading-module-indicator hidden text-center text-sm text-gray-500 mt-3">Cargando...</div>
+                    </div>
+                    <!-- Module 6 -->
+                    <div class="bg-white p-7 rounded-2xl shadow-lg border-b-4 border-accent-indigo transform hover:translate-y-[-5px] transition-transform duration-300">
+                        <div class="flex items-center mb-5">
+                            <i data-lucide="clipboard-list" class="text-custom-blue-gradient-start w-10 h-10 mr-3"></i>
+                            <h3 class="text-2xl font-bold text-gray-800">Módulo 6: Proyectos y Casos Prácticos</h3>
+                        </div>
+                        <p class="text-md text-gray-700 leading-relaxed mb-5">Desarrollo de un proyecto final y análisis de casos reales para aplicar los conocimientos adquiridos.</p>
+                        <div class="flex flex-wrap gap-2">
+                            <button onclick="expandModuleContent('Módulo 6: Proyectos y Casos Prácticos')" class="flex-1 bg-accent-indigo hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-base font-semibold transition duration-200 shadow-md">Expandir Contenido ✨</button>
+                            <button onclick="generateQuizQuestions('Módulo 6: Proyectos y Casos Prácticos')" class="flex-1 bg-unifranz-orange hover:bg-orange-700 text-white px-5 py-2.5 rounded-lg text-base font-semibold transition duration-200 shadow-md">Generar Preguntas ✨</button>
+                            <button onclick="explainAIConcept('Módulo 6: Proyectos y Casos Prácticos')" class="flex-1 bg-purple-700 hover:bg-purple-900 text-white px-5 py-2.5 rounded-lg text-base font-semibold transition duration-200 shadow-md">Explicar Concepto IA ✨</button>
+                        </div>
+                        <div id="expanded-Módulo 6: Proyectos y Casos Prácticos" class="expanded-content hidden"></div>
+                        <div id="loading-Módulo 6: Proyectos y Casos Prácticos" class="loading-module-indicator hidden text-center text-sm text-gray-500 mt-3">Cargando...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Thematic Units Page Content -->
+        <div id="units-page" class="page-content hidden container mx-auto p-8 font-inter text-gray-800">
+            <div class="bg-white p-10 rounded-3xl shadow-2xl border border-blue-100">
+                <h1 class="text-4xl font-bold text-unifranz-dark-blue mb-8 text-center">
+                    Unidades Temáticas
+                </h1>
+                <p class="text-lg mb-10 text-center max-w-4xl mx-auto text-gray-700">
+                    Cada módulo se desglosa en unidades temáticas específicas para un aprendizaje detallado y estructurado.
+                </p>
+                <div class="space-y-8">
+                    <div class="bg-blue-50 p-7 rounded-2xl shadow-md border-l-4 border-unifranz-orange">
+                        <h3 class="text-2xl font-bold text-custom-blue-gradient-start mb-5">Módulo 1: Fundamentos de IA</h3>
+                        <ul class="list-none space-y-3 text-gray-800 text-lg ml-3">
+                            <li class="flex items-center"><span class="mr-3 text-unifranz-orange"><i data-lucide="chevrons-right" class="w-5 h-5"></i></span> 1.1 Introducción a la IA y su historia</li>
+                            <li class="flex items-center"><span class="mr-3 text-unifranz-orange"><i data-lucide="chevrons-right" class="w-5 h-5"></i></span> 1.2 Conceptos básicos de Machine Learning: Regresión y Clasificación</li>
+                            <li class="flex items-center"><span class="mr-3 text-unifranz-orange"><i data-lucide="chevrons-right" class="w-5 h-5"></i></span> 1.3 Redes Neuronales y Deep Learning: Perceptrón, capas convolucionales y recurrentes</li>
+                            <li class="flex items-center"><span class="mr-3 text-unifranz-orange"><i data-lucide="chevrons-right" class="w-5 h-5"></i></span> 1.4 Herramientas y entornos de desarrollo (Python, TensorFlow, PyTorch)</li>
+                        </ul>
+                    </div>
+                    <div class="bg-purple-50 p-7 rounded-2xl shadow-md border-l-4 border-custom-purple-gradient-end">
+                        <h3 class="text-2xl font-bold text-custom-blue-gradient-start mb-5">Módulo 2: IA en Diagnóstico por Imagen</h3>
+                        <ul class="list-none space-y-3 text-gray-800 text-lg ml-3">
+                            <li class="flex items-center"><span class="mr-3 text-custom-purple-gradient-end"><i data-lucide="chevrons-right" class="w-5 h-5"></i></span> 2.1 Fundamentos de procesamiento de imágenes médicas</li>
+                            <li class="flex items-center"><span class="mr-3 text-custom-purple-gradient-end"><i data-lucide="chevrons-right" class="w-5 h-5"></i></span> 2.2 Detección de enfermedades (ej. retinopatía diabética, cáncer)</li>
+                            <li class="flex items-center"><span class="mr-3 text-custom-purple-gradient-end"><i data-lucide="chevrons-right" class="w-5 h-5"></i></span> 2.3 Segmentación de órganos y tumores</li>
+                            <li class="flex items-center"><span class="mr-3 text-custom-purple-gradient-end"><i data-lucide="chevrons-right" class="w-5 h-5"></i></span> 2.4 IA en radiografía, resonancia magnética y tomografía</li>
+                        </ul>
+                    </div>
+                    <div class="bg-blue-50 p-7 rounded-2xl shadow-md border-l-4 border-unifranz-orange">
+                        <h3 class="text-2xl font-bold text-custom-blue-gradient-start mb-5">Módulo 3: Procesamiento de Lenguaje Natural (PLN) Clínico</h3>
+                        <ul class="list-none space-y-3 text-gray-800 text-lg ml-3">
+                            <li class="flex items-center"><span class="mr-3 text-unifranz-orange"><i data-lucide="chevrons-right" class="w-5 h-5"></i></span> 3.1 Introducción al PLN en el contexto médico</li>
+                            <li class="flex items-center"><span class="mr-3 text-unifranz-orange"><i data-lucide="chevrons-right" class="w-5 h-5"></i></span> 3.2 Extracción de información de texto no estructurado</li>
+                            <li class="flex items-center"><span class="mr-3 text-unifranz-orange"><i data-lucide="chevrons-right" class="w-5 h-5"></i></span> 3.3 Clasificación y resumen de documentos clínicos</li>
+                            <li class="flex items-center"><span class="mr-3 text-unifranz-orange"><i data-lucide="chevrons-right" class="w-5 h-5"></i></span> 3.4 Chatbots y asistentes virtuales para pacientes y profesionales</li>
+                        </ul>
+                    </div>
+                    <div class="bg-purple-50 p-7 rounded-2xl shadow-md border-l-4 border-custom-purple-gradient-end">
+                        <h3 class="text-2xl font-bold text-custom-blue-gradient-start mb-5">Módulo 4: IA en Descubrimiento de Fármacos y Genómica</h3>
+                        <ul class="list-none space-y-3 text-gray-800 text-lg ml-3">
+                            <li class="flex items-center"><span class="mr-3 text-custom-purple-gradient-end"><i data-lucide="chevrons-right" class="w-5 h-5"></i></span> 4.1 Predicción de propiedades de moléculas y diseño de fármacos</li>
+                            <li class="flex items-center"><span class="mr-3 text-custom-purple-gradient-end"><i data-lucide="chevrons-right" class="w-5 h-5"></i></span> 4.2 Análisis de datos genómicos y transcriptómicos</li>
+                            <li class="flex items-center"><span class="mr-3 text-custom-purple-gradient-end"><i data-lucide="chevrons-right" class="w-5 h-5"></i></span> 4.3 Medicina personalizada y farmacogenómica</li>
+                            <li class="flex items-center"><span class="mr-3 text-custom-purple-gradient-end"><i data-lucide="chevrons-right" class="w-5 h-5"></i></span> 4.4 Reposicionamiento de fármacos asistido por IA</li>
+                        </ul>
+                    </div>
+                    <div class="bg-blue-50 p-7 rounded-2xl shadow-md border-l-4 border-unifranz-orange">
+                        <h3 class="text-2xl font-bold text-custom-blue-gradient-start mb-5">Módulo 5: Ética, Privacidad y Regulación de IA Médica</h3>
+                        <ul class="list-none space-y-3 text-gray-800 text-lg ml-3">
+                            <li class="flex items-center"><span class="mr-3 text-unifranz-orange"><i data-lucide="chevrons-right" class="w-5 h-5"></i></span> 5.1 Dilemas éticos de la IA en salud</li>
+                            <li class="flex items-center"><span class="mr-3 text-unifranz-orange"><i data-lucide="chevrons-right" class="w-5 h-5"></i></span> 5.2 Privacidad de datos médicos (HIPAA, GDPR, etc.)</li>
+                            <li class="flex items-center"><span class="mr-3 text-unifranz-orange"><i data-lucide="chevrons-right" class="w-5 h-5"></i></span> 5.3 Sesgos algorítmicos y equidad en la IA médica</li>
+                            <li class="flex items-center"><span class="mr-3 text-unifranz-orange"><i data-lucide="chevrons-right" class="w-5 h-5"></i></span> 5.4 Marco regulatorio y certificaciones para dispositivos médicos con IA</li>
+                        </ul>
+                    </div>
+                    <div class="bg-purple-50 p-7 rounded-2xl shadow-md border-l-4 border-custom-purple-gradient-end">
+                        <h3 class="text-2xl font-bold text-custom-blue-gradient-start mb-5">Módulo 6: Proyectos y Casos Prácticos</h3>
+                        <ul class="list-none space-y-3 text-gray-800 text-lg ml-3">
+                            <li class="flex items-center"><span class="mr-3 text-custom-purple-gradient-end"><i data-lucide="chevrons-right" class="w-5 h-5"></i></span> 6.1 Metodología de proyectos de IA en salud</li>
+                            <li class="flex items-center"><span class="mr-3 text-custom-purple-gradient-end"><i data-lucide="chevrons-right" class="w-5 h-5"></i></span> 6.2 Estudio de casos clínicos exitosos de IA</li>
+                            <li class="flex items-center"><span class="mr-3 text-custom-purple-gradient-end"><i data-lucide="chevrons-right" class="w-5 h-5"></i></span> 6.3 Taller de desarrollo de prototipos (ej. detector de imágenes)</li>
+                            <li class="flex items-center"><span class="mr-3 text-custom-purple-gradient-end"><i data-lucide="chevrons-right" class="w-5 h-5"></i></span> 6.4 Presentación de proyectos finales y feedback</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-gray-800 text-white text-center p-6 mt-12 rounded-t-xl shadow-inner">
+        <p class="text-md font-light">&copy; <span id="current-year"></span> Cursos de IA para Medicina. Todos los derechos reservados.</p>
+        <p class="text-sm mt-2">Hecho con pasión para el futuro de la salud.</p>
+    </footer>
+
+    <!-- Chatbot UI -->
+    <div id="chat-window" class="fixed hidden bg-white border border-gray-300 rounded-lg shadow-xl z-50 flex flex-col">
+        <div class="bg-unifranz-dark-blue text-white p-4 rounded-t-lg flex justify-between items-center">
+            <h3 class="font-bold text-lg">Asistente del Curso IA</h3>
+            <button class="text-white hover:text-gray-200" onclick="toggleChat()">&times;</button>
+        </div>
+        <div id="chat-messages" class="flex flex-col space-y-2 overflow-y-auto h-64 p-4">
+            <!-- Messages will be appended here -->
+            <div class="message-bubble ai">
+                Hola! Soy tu asistente de IA. ¿En qué puedo ayudarte hoy con respecto al curso de Inteligencia Artificial para Estudiantes de Medicina?
+            </div>
+        </div>
+        <div id="loading-indicator" class="text-gray-500 text-center text-sm my-2">Cargando...</div>
+        <div id="chat-input-area" class="p-4 bg-gray-50 border-t border-gray-200 flex">
+            <input type="text" id="chat-input" placeholder="Escribe tu pregunta..." class="flex-grow p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-unifranz-orange">
+            <button id="send-chat-button" class="ml-2 bg-unifranz-orange hover:bg-orange-700 text-white p-2 rounded-lg transition duration-200 flex items-center justify-center">
+                <i data-lucide="send" class="w-5 h-5"></i>
+            </button>
+        </div>
+    </div>
+
+    <button id="chat-toggle-button" class="fixed z-50 right-6 bottom-6 bg-unifranz-orange hover:bg-orange-700 text-white p-4 rounded-full shadow-lg transition duration-300 transform hover:scale-105">
+        <i data-lucide="message-square" class="w-6 h-6"></i>
+    </button>
+
+    <script>
+        // Set the current year in the footer
+        document.getElementById('current-year').textContent = new Date().getFullYear();
+
+        // Function to show/hide pages based on the clicked navigation item
+        function showPage(pageId) {
+            // Hide all page content
+            document.querySelectorAll('.page-content').forEach(page => {
+                page.classList.add('hidden');
+            });
+
+            // Show the selected page content
+            document.getElementById(pageId + '-page').classList.remove('hidden');
+
+            // Deactivate all navigation items
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active-nav-item');
+                item.classList.remove('bg-white', 'bg-opacity-20', 'backdrop-filter', 'backdrop-blur-sm');
+            });
+
+            // Activate the clicked navigation item
+            const activeNavItem = document.querySelector(`.nav-item[onclick="showPage('${pageId}')"]`);
+            if (activeNavItem) {
+                activeNavItem.classList.add('active-nav-item');
+                activeNavItem.classList.add('bg-white', 'bg-opacity-20', 'backdrop-filter', 'backdrop-blur-sm');
+            }
+
+            // Hide mobile menu after selection (if open)
+            const navContent = document.getElementById('nav-content');
+            if (!navContent.classList.contains('lg:flex')) { // Check if it's not already in desktop view
+                navContent.classList.add('hidden');
+            }
+        }
+
+        // Initialize Lucide Icons
+        document.addEventListener('DOMContentLoaded', (event) => {
+            lucide.createIcons();
+            // Show the home page by default on load
+            showPage('home');
+        });
+
+        // Toggle mobile menu visibility
+        document.getElementById('mobile-menu-button').addEventListener('click', function() {
+            const navContent = document.getElementById('nav-content');
+            navContent.classList.toggle('hidden');
+            navContent.classList.toggle('flex-grow'); // Add flex-grow for mobile layout
+            navContent.classList.toggle('w-full'); // Ensure full width for mobile layout
+        });
+
+
+        // --- Chatbot Logic ---
+        const chatToggleButton = document.getElementById('chat-toggle-button');
+        const chatWindow = document.getElementById('chat-window');
+        const chatMessages = document.getElementById('chat-messages');
+        const chatInput = document.getElementById('chat-input');
+        const sendChatButton = document.getElementById('send-chat-button');
+        const mainLoadingIndicator = document.getElementById('loading-indicator'); // Renamed for clarity with module specific ones
+
+        let chatHistory = []; // Stores the conversation history for the LLM
+
+        // Extract course content for the AI to answer questions and new features
+        const courseContent = {
+            title: "Inteligencia Artificial para Estudiantes de Medicina",
+            description: "Plataforma educativa diseñada para introducir a los futuros profesionales de la salud en el fascinante mundo de la Inteligencia Artificial. Prepárate para transformar tu práctica médica con herramientas y conocimientos innovadoras. Este curso es altamente recomendado para estudiantes de Medicina de cualquier semestre, ya que la integración de la IA es fundamental para su formación profesional y futura práctica clínica.",
+            recommendationForSemesters: "Este curso es altamente recomendado para estudiantes de Medicina de cualquier semestre, ya que la integración de la IA es fundamental para su formación profesional y futura práctica clínica.",
+            objectives: [
+                "Comprender los fundamentos teóricos y prácticos de la Inteligencia Artificial y su aplicación en el campo de la medicina.",
+                "Identificar las principales herramientas y algoritmos de IA utilizados en diagnóstico, tratamiento y gestión de la salud.",
+                "Analizar casos de estudio reales para evaluar el impacto y las limitaciones de la IA en diferentes especialidades médicas.",
+                "Desarrollar habilidades críticas para la interpretación y el uso ético de los resultados generados por sistemas de IA en la práctica clínica.",
+                "Fomentar la investigación y la innovación en el ámbito de la IA aplicada a la medicina."
+            ],
+            modules: [
+                { title: "Módulo 1: Fundamentos de IA", description: "Introducción a los conceptos básicos de Inteligencia Artificial, aprendizaje automático y aprendizaje profundo." },
+                { title: "Módulo 2: IA en Diagnóstico por Imagen", description: "Aplicaciones de la IA en radiología, patología y otras áreas de diagnóstico visual." },
+                { title: "Módulo 3: Procesamiento de Lenguaje Natural (PLN) Clínico", description: "Uso de PLN para analizar historias clínicas, notas médicas y literatura científica." },
+                { title: "Módulo 4: IA en Descubrimiento de Fármacos y Genómica", description: "Exploración de cómo la IA acelera la investigación y el desarrollo de nuevos tratamientos." },
+                { title: "Módulo 5: Ética, Privacidad y Regulación de IA Médica", description: "Consideraciones éticas, protección de datos y el marco regulatorio en la aplicación de la IA en salud." },
+                { title: "Módulo 6: Proyectos y Casos Prácticos", description: "Desarrollo de un proyecto final y análisis de casos reales para aplicar los conocimientos adquiridos." }
+            ],
+            units: {
+                "Módulo 1: Fundamentos de IA": [
+                    "1.1 Introducción a la IA y su historia",
+                    "1.2 Conceptos básicos de Machine Learning: Regresión y Clasificación",
+                    "1.3 Redes Neuronales y Deep Learning: Perceptrón, capas convolucionales y recurrentes",
+                    "1.4 Herramientas y entornos de desarrollo (Python, TensorFlow, PyTorch)"
+                ],
+                "Módulo 2: IA en Diagnóstico por Imagen": [
+                    "2.1 Fundamentos de procesamiento de imágenes médicas",
+                    "2.2 Detección de enfermedades (ej. retinopatía diabética, cáncer)",
+                    "2.3 Segmentación de órganos y tumores",
+                    "2.4 IA en radiografía, resonancia magnética y tomografía"
+                ],
+                "Módulo 3: Procesamiento de Lenguaje Natural (PLN) Clínico": [
+                    "3.1 Introducción al PLN en el contexto médico",
+                    "3.2 Extracción de información de texto no estructurado",
+                    "3.3 Clasificación y resumen de documentos clínicos",
+                    "3.4 Chatbots y asistentes virtuales para pacientes y profesionales"
+                ],
+                "Módulo 4: IA en Descubrimiento de Fármacos y Genómica": [
+                    "4.1 Predicción de propiedades de moléculas y diseño de fármacos",
+                    "4.2 Análisis de datos genómicos y transcriptómicos",
+                    "4.3 Medicina personalizada y farmacogenómica",
+                    "4.4 Reposicionamiento de fármacos asistido por IA"
+                ],
+                "Módulo 5: Ética, Privacidad y Regulación de IA Médica": [
+                    "5.1 Dilemas éticos de la IA en salud",
+                    "5.2 Privacidad de datos médicos (HIPAA, GDPR, etc.)",
+                    "5.3 Sesgos algorítmicos y equidad en la IA médica",
+                    "5.4 Marco regulatorio y certificaciones para dispositivos médicos con IA"
+                ],
+                "Módulo 6: Proyectos y Casos Prácticos": [
+                    "6.1 Metodología de proyectos de IA en salud",
+                    "6.2 Estudio de casos clínicos exitosos de IA",
+                    "6.3 Taller de desarrollo de prototipos (ej. detector de imágenes)",
+                    "6.4 Presentación de proyectos finales y feedback"
+                ]
+            }
+        };
+
+        // Function to toggle chat window visibility
+        function toggleChat() {
+            chatWindow.classList.toggle('hidden');
+            chatWindow.classList.toggle('open');
+            // Scroll to bottom when chat opens
+            if (chatWindow.classList.contains('open')) {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                chatInput.focus();
+            }
+        }
+
+        // Add message to chat display
+        function addMessage(text, sender) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message-bubble', sender, 'self-start', 'max-w-xs', 'break-words');
+            // Sanitize text to remove unwanted characters like ** from responses
+            messageDiv.textContent = text.replace(/\*\*/g, ''); // Remove all **
+            if (sender === 'user') {
+                messageDiv.classList.add('bg-blue-200', 'ml-auto');
+            } else {
+                messageDiv.classList.add('bg-gray-200', 'mr-auto');
+            }
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight; // Scroll to latest message
+        }
+
+        // Generic function to call Gemini API
+        async function callGeminiAPI(prompt, loadingElementId) {
+            const loadingElement = document.getElementById(loadingElementId);
+            if (loadingElement) loadingElement.classList.add('visible');
+
+            let responseText = "Lo siento, no pude obtener una respuesta en este momento.";
+            try {
+                const payload = {
+                    contents: [
+                        { role: "user", parts: [{ text: prompt }] }
+                    ]
+                };
+
+                // IMPORTANT: If running this HTML file locally or on a custom server,
+                // you must replace the empty string with your actual Google Gemini API Key.
+                // Get your key from Google AI Studio: https://aistudio.google.com/app/apikey
+                const apiKey = "AIzaSyBGlh9F7rGfxbI-s8_RXLTZwrXcx3yTCt4"; // YOUR GENERATED API KEY HERE
+                
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                    responseText = result.candidates[0].content.parts[0].text;
+                }
+            } catch (error) {
+                console.error("Error al comunicarse con la IA:", error);
+                responseText = "Lo siento, hubo un error al procesar tu solicitud. Por favor, inténtalo de nuevo.";
+            } finally {
+                if (loadingElement) loadingElement.classList.remove('visible');
+            }
+            return responseText.replace(/\*\*/g, ''); // Ensure no ** in the final output
+        }
+
+        // Function to send message to AI chatbot
+        async function sendMessage() {
+            const userMessage = chatInput.value.trim();
+            if (userMessage === '') return;
+
+            addMessage(userMessage, 'user');
+            chatInput.value = '';
+            
+            // Prepare context for the LLM chatbot
+            const contextPrompt = `
+                Eres un asistente de IA experto en el curso de "${courseContent.title}" para estudiantes de medicina.
+                Tu tarea es responder a las preguntas de los usuarios sobre este curso de manera directa y concisa.
+                Siempre basa tus respuestas EXCLUSIVAMENTE en la siguiente información detallada sobre el curso.
+                Elimina cualquier formato markdown como asteriscos (**) en tus respuestas.
+                Si una pregunta no puede ser respondida con la información proporcionada, indica amablemente que no tienes esa información.
+
+                Información del Curso:
+                Título: ${courseContent.title}
+                Descripción: ${courseContent.description}
+
+                Objetivos:
+                ${courseContent.objectives.map(obj => `- ${obj}`).join('\n')}
+
+                Módulos:
+                ${courseContent.modules.map(mod => `- ${mod.title}: ${mod.description}`).join('\n')}
+
+                Unidades Temáticas por Módulo:
+                ${Object.entries(courseContent.units).map(([moduleTitle, units]) =>
+                    `  - ${moduleTitle}:\n    ${units.map(unit => `    - ${unit}`).join('\n')}`
+                ).join('\n')}
+
+                Detalle Importante: ${courseContent.recommendationForSemesters}
+
+                Ahora, por favor responde a la siguiente pregunta del usuario:
+            `;
+            const aiResponse = await callGeminiAPI(contextPrompt + userMessage, 'loading-indicator');
+            addMessage(aiResponse, 'ai');
+        }
+
+        // --- New AI Features ---
+
+        // Function to expand module content
+        async function expandModuleContent(moduleTitle) {
+            const moduleInfo = courseContent.modules.find(m => m.title === moduleTitle);
+            const unitsForModule = courseContent.units[moduleTitle] ? courseContent.units[moduleTitle].join(', ') : 'No hay unidades temáticas específicas listadas.';
+
+            const prompt = `
+                Eres un asistente de contenido para un curso de IA en medicina.
+                Expande la siguiente descripción del módulo "${moduleTitle}" para dar una visión más profunda y didáctica, enfocándote en los aspectos clave y su relevancia para estudiantes de medicina.
+                La respuesta debe ser directa, sin preámbulos como 'Basado en la información...'.
+                Elimina cualquier formato markdown como asteriscos (**) o guiones (-) en tus respuestas si no son parte de un listado.
+                Información del módulo: ${moduleInfo.description}
+                Unidades temáticas relacionadas: ${unitsForModule}
+            `;
+
+            const expandedContentDiv = document.getElementById(`expanded-${moduleTitle}`);
+            const loadingModuleIndicator = document.getElementById(`loading-${moduleTitle}`);
+
+            if (expandedContentDiv.classList.contains('hidden')) {
+                expandedContentDiv.classList.remove('hidden');
+                expandedContentDiv.innerHTML = '<p class="text-gray-600">Cargando contenido expandido...</p>';
+                loadingModuleIndicator.classList.add('visible');
+                const response = await callGeminiAPI(prompt, `loading-${moduleTitle}`);
+                expandedContentDiv.innerHTML = `<p>${response}</p>`;
+                loadingModuleIndicator.classList.remove('visible');
+            } else {
+                expandedContentDiv.classList.add('hidden');
+                expandedContentDiv.innerHTML = ''; // Clear content when hidden
+            }
+        }
+
+        // Function to generate quiz questions
+        async function generateQuizQuestions(moduleTitle) {
+            const unitsForModule = courseContent.units[moduleTitle] ? courseContent.units[moduleTitle].join(', ') : 'No hay unidades temáticas específicas listadas.';
+
+            const prompt = `
+                Eres un generador de preguntas para un curso de IA en medicina.
+                Crea 3 preguntas de respuesta corta y 2 preguntas de opción múltiple (total 5 preguntas), relevantes para el módulo "${moduleTitle}".
+                Las preguntas deben ser claras, concisas y basarse estrictamente en el contenido de las siguientes unidades temáticas.
+                Para las preguntas de opción múltiple, incluye 4 opciones (A, B, C, D) y no indiques la respuesta correcta.
+                Solo genera las preguntas, sin las respuestas.
+                Cada pregunta debe estar numerada.
+                Elimina cualquier formato markdown como asteriscos (**) en tus respuestas.
+
+                Unidades Temáticas del Módulo "${moduleTitle}": ${unitsForModule}
+            `;
+
+            const loadingModuleIndicator = document.getElementById(`loading-${moduleTitle}`);
+            loadingModuleIndicator.classList.add('visible');
+            const questions = await callGeminiAPI(prompt, `loading-${moduleTitle}`);
+            loadingModuleIndicator.classList.remove('visible');
+
+            // Using alert for simplicity, but a modal would be better for a real app
+            alert(`Preguntas de Práctica para ${moduleTitle}:\n\n${questions}`);
+        }
+
+        // New feature: Explain AI Concept
+        async function explainAIConcept(moduleTitle) {
+            const concept = prompt("Introduce el concepto de IA que deseas que te explique (ej. 'Redes Neuronales Convolucionales', 'Procesamiento de Lenguaje Natural'):");
+            if (!concept) return; // User cancelled
+
+            const moduleInfo = courseContent.modules.find(m => m.title === moduleTitle);
+            const unitsForModule = courseContent.units[moduleTitle] ? courseContent.units[moduleTitle].join(', ') : 'No hay unidades temáticas específicas listadas para este módulo.';
+
+            const promptText = `
+                Eres un experto en IA aplicada a la medicina y tu objetivo es simplificar conceptos complejos de IA para estudiantes de medicina. Dada la siguiente información del curso y el concepto de IA solicitado, explícalo de manera clara y concisa, utilizando ejemplos o analogías médicas cuando sea posible. La respuesta debe ser directa, sin preámbulos. Elimina cualquier formato markdown como asteriscos (**) o guiones (-) si no son parte de un listado.
+
+                Módulo: ${moduleTitle}
+                Descripción del Módulo: ${moduleInfo.description}
+                Unidades Temáticas: ${unitsForModule}
+
+                Concepto de IA a explicar: ${concept}
+            `;
+
+            const loadingModuleIndicator = document.getElementById(`loading-${moduleTitle}`);
+            loadingModuleIndicator.classList.add('visible');
+            const explanation = await callGeminiAPI(promptText, `loading-${moduleTitle}`);
+            loadingModuleIndicator.classList.remove('visible');
+
+            alert(`Explicación de "${concept}" para el ${moduleTitle}:\n\n${explanation}`);
+        }
+
+        // Event Listeners for chat
+        chatToggleButton.addEventListener('click', toggleChat);
+        sendChatButton.addEventListener('click', sendMessage);
+        chatInput.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>
